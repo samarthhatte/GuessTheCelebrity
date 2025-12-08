@@ -11,7 +11,7 @@ An interactive Android game where users guess the name of a celebrity based on a
 
 📥 Download APK
 
-➡️ Click here to download the latest APK
+➡️ Click here to download the latest APK https://github.com/samarthhatte/GuessTheCelebrity/releases/download/Android/app-debug.apk
 
 🚀 How to Play
 
