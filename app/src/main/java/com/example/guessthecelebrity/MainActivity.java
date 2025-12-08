@@ -1,42 +1,54 @@
 package com.example.guessthecelebrity;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
 
-    // Extract image URL
-    public static String extractImageUrl(String text) {
-        String regex = "src=\"(https://stat\\d+\\.bollywoodhungama\\.in/wp-content/uploads/\\d{4}/\\d{2}/[^\\s\"]+\\.jpg)\"";
-        Matcher matcher = Pattern.compile(regex).matcher(text);
-        return matcher.find() ? matcher.group(1) : null;
+    ArrayList<String> imageUrls = new ArrayList<>();
+    ArrayList<String> names = new ArrayList<>();
+
+    ImageView imageView;
+    Button button1, button2, button3, button4;
+
+    int correctAnswerIndex;
+    String[] answers = new String[4];
+    int chosenCeleb = 0;
+
+    public void celebChosen(View view) {
+        // game logic later
+        if (view.getTag().toString().equals(Integer.toString(correctAnswerIndex))) {
+            // correct answer
+            Toast.makeText(getApplicationContext(), "Correct!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(getApplicationContext(), "Wrong! It was " + names.get(chosenCeleb), Toast.LENGTH_SHORT).show();
+        }
+        loadNewQuestion();
     }
 
-    // Extract name (from alt="")
-    public static String extractName(String text) {
-        String regex = "alt=\"([^\"]+)\"";
-        Matcher matcher = Pattern.compile(regex).matcher(text);
-        return matcher.find() ? matcher.group(1) : null;
-    }
+    class DownloadTask extends AsyncTask<String, Void, String> {
 
-    public class DownloadTask extends AsyncTask<String, Void, String> {
         @Override
         protected String doInBackground(String... urls) {
             StringBuilder result = new StringBuilder();
+
             try {
                 URL url = new URL(urls[0]);
                 HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
@@ -44,18 +56,87 @@ public class MainActivity extends AppCompatActivity {
                 InputStreamReader reader = new InputStreamReader(in);
 
                 int data = reader.read();
-                while (data != -1) {    // FIXED: -1 means end of stream
+                while (data != -1) {
                     result.append((char) data);
                     data = reader.read();
                 }
-                return result.toString();
 
+                return result.toString();
             } catch (Exception e) {
-                e.printStackTrace();
                 return null;
             }
         }
 
+        @Override
+        protected void onPostExecute(String result) {
+
+            Pattern pImage = Pattern.compile("src=\"(https://m\\.media-amazon\\.com/images/[^\"]+\\.jpg)\"");
+            Matcher mImage = pImage.matcher(result);
+
+            while (mImage.find()) {
+                imageUrls.add(mImage.group(1));
+            }
+
+            Pattern pName = Pattern.compile("alt=\"([^\"]+)\"");
+            Matcher mName = pName.matcher(result);
+
+            while (mName.find()) {
+                names.add(mName.group(1));
+            }
+
+            if (names.size() > imageUrls.size()) {
+                names.remove(names.size() - 1);
+            }
+
+            loadNewQuestion();
+        }
+    }
+
+    void loadNewQuestion() {
+        Random random = new Random();
+        chosenCeleb = random.nextInt(imageUrls.size());
+
+        new DownloadImageTask().execute(imageUrls.get(chosenCeleb));
+
+        correctAnswerIndex = random.nextInt(4);
+
+        for (int i = 0; i < 4; i++) {
+            if (i == correctAnswerIndex) {
+                answers[i] = names.get(chosenCeleb);
+            } else {
+                int wrong;
+                do {
+                    wrong = new Random().nextInt(names.size());
+                } while (wrong == chosenCeleb);
+
+                answers[i] = names.get(wrong);
+            }
+        }
+
+        button1.setText(answers[0]);
+        button2.setText(answers[1]);
+        button3.setText(answers[2]);
+        button4.setText(answers[3]);
+    }
+
+
+    class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+        @Override
+        protected Bitmap doInBackground(String... urls) {
+            try {
+                URL url = new URL(urls[0]);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                InputStream input = connection.getInputStream();
+                return BitmapFactory.decodeStream(input);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            imageView.setImageBitmap(bitmap);
+        }
     }
 
     @Override
@@ -63,35 +144,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        DownloadTask task = new DownloadTask();
-        String result = null;
 
-        try {
-            result = task.execute("https://www.bollywoodhungama.com/celebrities/top-100/").get();
-            Log.i("Contents of URL", result);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
-        if (result != null) {
-            String imageUrl = extractImageUrl(result);
-            String name = extractName(result);
+        imageView = findViewById(R.id.imageView);
+        button1 = findViewById(R.id.button1);
+        button2 = findViewById(R.id.button2);
+        button3 = findViewById(R.id.button3);
+        button4 = findViewById(R.id.button4);
 
-            if (imageUrl != null)
-                Toast.makeText(MainActivity.this, imageUrl, Toast.LENGTH_SHORT).show();
-            else
-                Toast.makeText(MainActivity.this, "No Image URL Found", Toast.LENGTH_SHORT).show();
+        new DownloadTask().execute("https://www.imdb.com/list/ls051438203/");
 
-            if (name != null)
-                Toast.makeText(MainActivity.this, "Celebrity Name: " + name, Toast.LENGTH_SHORT).show();
-            else
-                Toast.makeText(MainActivity.this, "No Name Found", Toast.LENGTH_SHORT).show();
-        }
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
     }
 }
