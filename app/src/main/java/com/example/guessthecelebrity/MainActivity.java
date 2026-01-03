@@ -96,6 +96,10 @@ public class MainActivity extends AppCompatActivity {
         Random random = new Random();
         chosenCeleb = random.nextInt(imageUrls.size());
 
+//        imageView.setImageResource(R.mipmap.ic_launcher);
+//        imageView.setAlpha(1f);
+        imageView.setImageDrawable(null);
+
         new DownloadImageTask().execute(imageUrls.get(chosenCeleb));
 
         correctAnswerIndex = random.nextInt(4);
@@ -135,8 +139,21 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Bitmap bitmap) {
-            imageView.setImageBitmap(bitmap);
+
+            if (bitmap != null) {
+
+                // Set image
+                imageView.setImageBitmap(bitmap);
+
+                // Fade-in animation
+//                imageView.setAlpha(0f);
+//                imageView.animate()
+//                        .alpha(1f)
+//                        .setDuration(400)
+//                        .start();
+            }
         }
+
     }
 
     @Override
@@ -152,7 +169,12 @@ public class MainActivity extends AppCompatActivity {
         button3 = findViewById(R.id.button3);
         button4 = findViewById(R.id.button4);
 
-        new DownloadTask().execute("https://www.imdb.com/list/ls051438203/");
+        imageUrls = CelebRepository.imageUrls;
+        names = CelebRepository.names;
+
+        loadNewQuestion();
+
+//        new DownloadTask().execute("https://www.imdb.com/list/ls051438203/");
 
     }
 }
